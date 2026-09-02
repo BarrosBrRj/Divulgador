@@ -1,0 +1,6 @@
+{
+  "name": "DIVULGADOR",
+  "description": "Plataforma moderna de divulgação para empresas, lojas e profissionais com IA, radar de proximidade e gerador de anúncios.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
