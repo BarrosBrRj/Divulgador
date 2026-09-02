@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { fetchAddressByCep } from '../services/api';
 import { CategoryId } from '../types';
+import { compressAndResizeImage } from '../utils/imageUtils';
 import {
   Building2,
   MapPin,
@@ -19,6 +20,8 @@ import {
   Copy,
   Sparkles,
   ExternalLink,
+  Camera,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -32,6 +35,11 @@ export const BusinessProfileView: React.FC = () => {
     setCurrentTab,
     showToast,
   } = useApp();
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   const [name, setName] = useState(business.name);
   const [description, setDescription] = useState(business.description);
@@ -52,6 +60,54 @@ export const BusinessProfileView: React.FC = () => {
   const [isSearchingCep, setIsSearchingCep] = useState(false);
 
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // File Upload Handlers with Automatic Compression & Persistence
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const resizedBase64 = await compressAndResizeImage(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.85,
+      });
+
+      updateBusiness({ logo: resizedBase64 });
+      updateUser({ avatar: resizedBase64 });
+      showToast('📸 Foto de perfil atualizada!', 'Sua nova foto foi salva com sucesso no perfil.');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Erro ao atualizar foto', err.message || 'Falha ao carregar a imagem.', 'error');
+    } finally {
+      setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    try {
+      const resizedBase64 = await compressAndResizeImage(file, {
+        maxWidth: 1200,
+        maxHeight: 600,
+        quality: 0.82,
+      });
+
+      updateBusiness({ coverImage: resizedBase64 });
+      showToast('🖼️ Imagem de capa atualizada!', 'O banner do seu negócio foi salvo com sucesso.');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Erro ao atualizar capa', err.message || 'Falha ao carregar a imagem.', 'error');
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   const handleCepLookup = async () => {
     if (!cep || cep.replace(/\D/g, '').length !== 8) {
@@ -107,24 +163,92 @@ export const BusinessProfileView: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      {/* Hidden File Inputs for Device Image Picking */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleCoverChange}
+      />
+      <input
+        ref={logoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleLogoChange}
+      />
+
       {/* 1. Header Profile Cover & Info */}
       <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-md">
-        <div className="h-32 sm:h-40 bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-700 relative">
+        {/* Interactive Cover Banner */}
+        <div
+          onClick={() => coverInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          title="Toque para alterar a foto de capa"
+          className="h-32 sm:h-44 bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-700 relative cursor-pointer group overflow-hidden"
+        >
           <img
             src={business.coverImage}
-            alt=""
-            className="w-full h-full object-cover opacity-40"
+            alt="Capa do negócio"
+            className="w-full h-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-75 transition-all duration-300"
           />
+
+          {/* Overlay Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-black/20 group-hover:bg-slate-950/40 transition-colors" />
+
+          {/* Edit Cover Action Badge */}
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+            <div className="px-3 py-1.5 rounded-full bg-slate-950/70 hover:bg-slate-950/90 text-white text-xs font-bold backdrop-blur-md border border-white/20 shadow-lg flex items-center gap-1.5 transition-all group-hover:scale-105">
+              {isUploadingCover ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="hidden sm:inline">Trocar Capa</span>
+                  <span className="sm:hidden">Capa</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="p-5 sm:p-6 relative pt-0">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-14 mb-4">
             <div className="flex items-end gap-3.5">
-              <img
-                src={business.logo}
-                alt={business.name}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover ring-4 ring-white shadow-lg bg-white"
-              />
+              {/* Interactive Profile Photo / Logo */}
+              <div
+                onClick={() => logoInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                title="Toque para alterar a foto de perfil"
+                className="relative cursor-pointer group shrink-0"
+              >
+                <img
+                  src={business.logo}
+                  alt={business.name}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover ring-4 ring-white shadow-lg bg-white group-hover:opacity-90 transition-opacity"
+                />
+
+                {/* Hover overlay on desktop */}
+                <div className="absolute inset-0 rounded-3xl bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                  <Camera className="w-6 h-6 text-amber-300 drop-shadow" />
+                </div>
+
+                {/* Persistent Camera Badge Indicator */}
+                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-purple-700 text-white flex items-center justify-center border-2 border-white shadow-md group-hover:bg-purple-800 transition-colors">
+                  {isUploadingLogo ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-amber-300" />
+                  )}
+                </div>
+              </div>
+
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   {business.name}
@@ -144,7 +268,7 @@ export const BusinessProfileView: React.FC = () => {
               </div>
               <button
                 onClick={() => setCurrentTab('plans')}
-                className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition-colors shadow-xs"
+                className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
               >
                 Mudar Plano
               </button>

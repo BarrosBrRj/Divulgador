@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { PWAInstallButton } from './PWAInstallButton';
 import {
   Bell,
   Megaphone,
@@ -116,6 +117,9 @@ export const Header: React.FC = () => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+
           {/* Quick Publish Ad Button (Desktop) */}
           <button
             onClick={() => openCreateAdModal()}
