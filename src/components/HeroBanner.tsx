@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, Flame, Rocket, MapPin, Eye, TrendingUp, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import heroBannerImg from '../assets/images/divulgador_hero_banner_1788291192816.jpg';
+import heroBannerImg from '../assets/images/divulgador_hero_banner.jpg';
 
 export const HeroBanner: React.FC = () => {
   const { setCurrentTab } = useApp();
